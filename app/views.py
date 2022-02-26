@@ -6,13 +6,24 @@ This file creates your application.
 """
 import os
 from app import app
-from flask import render_template, request, redirect, url_for, flash, session, abort
+from flask import render_template, request, redirect, url_for, flash, session, abort,send_from_directory
 from werkzeug.utils import secure_filename
+from app.form import UploadForm
+
 
 
 ###
 # Routing for your application.
 ###
+def get_upload_images():
+    filename=[]
+    rootdir = os.getcwd()
+    print (rootdir)
+    for subdir, dirs, files in os.walk(rootdir + '/uploads'):
+        for file in files:
+            filename+=[file]
+            print (os.path.join(subdir, file))
+    return filename
 
 @app.route('/')
 def home():
@@ -23,7 +34,7 @@ def home():
 @app.route('/about/')
 def about():
     """Render the website's about page."""
-    return render_template('about.html', name="Mary Jane")
+    return render_template('about.html', name="Giovanne Pinto")
 
 
 @app.route('/upload', methods=['POST', 'GET'])
@@ -32,15 +43,28 @@ def upload():
         abort(401)
 
     # Instantiate your form class
+    myupload=UploadForm()
 
-    # Validate file upload on submit
-    if request.method == 'POST':
-        # Get file data and save to your uploads folder
-
+    # Validate file upload 
+    if myupload.validate_on_submit():
+        photo=myupload.photo.data     
+        filename= secure_filename(photo.filename)
+        photo.save(os.path.join(app.config['UPLOAD_FOLDER'],filename))
         flash('File Saved', 'success')
+        print('done')
         return redirect(url_for('home'))
+    flash_errors(myupload)
 
-    return render_template('upload.html')
+    return render_template('upload.html', form=myupload)
+
+@app.route('/uploads/<filename>')
+def getimage(filename):
+    return send_from_directory(os.path.join(os.getcwd(),app.config['UPLOAD_FOLDER']), filename)
+
+@app.route('/files')
+def files():
+    images=get_upload_images()
+    return render_template('files.html',images=images)
 
 
 @app.route('/login', methods=['POST', 'GET'])
